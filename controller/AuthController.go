@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"gopkg.in/oauth2.v3/errors"
 	"gopkg.in/oauth2.v3/generates"
@@ -13,17 +14,21 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"oauth2/common"
 	"oauth2/config"
-	"oauth2/model"
 	"oauth2/pkg/session"
+	"oauth2/service"
 	"time"
 )
 
 var srv *server.Server
 var manager *manage.Manager
 
-func init() {	// 加载配置文件
+func init() {
+	// 加载配置文件
 	config.Setup()
+	// 进行数据库初始化
+	common.InitDB()
 	// 设置session的相关配置
 	session.Setup()
 	// config oauth2 server
@@ -73,6 +78,7 @@ func AuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := srv.HandleAuthorizeRequest(w, r); err != nil {
+		fmt.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 }
@@ -82,6 +88,30 @@ type TplData struct {
 	// 用户申请的合规scope
 	Scope []config.Scope
 	Error string
+}
+
+func RegisterHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "不支持的方法", 405)
+		return
+	}
+	if r.Form == nil {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	email := r.Form.Get("email")
+	password := r.Form.Get("password")
+	username := r.Form.Get("username")
+	userService := service.NewUserService()
+	_, msg, code, err := userService.CreateUser(email, password, username)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(code)
+	w.Write([]byte(msg))
 }
 
 // 登录
@@ -96,7 +126,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid Request", http.StatusBadRequest)
 		return
 	}
-	clientId := form.(url.Values).Get("client_key")
+	clientId := form.(url.Values).Get("client_id")
 	scope := form.(url.Values).Get("scope")
 
 	// 页面数据
@@ -121,20 +151,32 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		// 账号密码登录
 		if r.Form.Get("type") == "password" {
 			// 自己实现验证逻辑
-			var user model.User
-			userId = user.GetUserIDByPwd(r.Form.Get("username"), r.Form.Get("password"))
+			userService := service.NewUserService()
+			userId, err = userService.GetUserIdByPwd(r.Form.Get("email"), r.Form.Get("password"))
+			if err != nil {
+				panic(fmt.Sprintf("数据查询时出错:%v", err.Error()))
+			}
+
 			if userId == "" {
 				t, err := template.ParseFiles("tpl/login.html")
 				if err != nil {
+					log.Println("登陆失败", err)
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 				data.Error = "用户名密码错误!"
 				t.Execute(w, data)
-
 				return
 			}
 		}
+		if err := session.Set(w, r, "LoggedInUserID", userId); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		fmt.Println("登陆成功 userId", userId)
+		w.Header().Set("Location", "/authorize")
+		w.WriteHeader(http.StatusFound)
+		return
 	}
 
 	t, err := template.ParseFiles("tpl/login.html")
@@ -219,9 +261,11 @@ func authorizeScopeHandler(w http.ResponseWriter, r *http.Request) (scope string
 }
 func userAuthorizeHandler(w http.ResponseWriter, r *http.Request) (userID string, err error) {
 	// 获取会话的UserId
-	v, _ := session.Get(r, "LoggedInUserId")
+	v, _ := session.Get(r, "LoggedInUserID")
 	// 会话不存在
+
 	if v == nil {
+		fmt.Println("userAuthorizeHandler:会话不存在")
 		if r.Form == nil {
 			r.ParseForm()
 		}
@@ -234,8 +278,12 @@ func userAuthorizeHandler(w http.ResponseWriter, r *http.Request) (userID string
 	userID = v.(string)
 	return
 }
-func passwordAuthorizationHandler(username string, password string) (string, error) {
-	var user model.User
-	userId := user.GetUserIDByPwd(username, password)
+func passwordAuthorizationHandler(email string, password string) (string, error) {
+	userService := service.NewUserService()
+	userId, err := userService.GetUserIdByPwd(email, password)
+	if err != nil {
+		return "", err
+	}
 	return userId, nil
+	//return fmt.Sprintf("%s%s", email, "hello"), nil
 }

@@ -17,12 +17,12 @@ type App struct {
 }
 
 type Db struct {
-	Type     string `yaml:"type"`
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
-	DbName   string `yaml:"dbname"`
+	DriveName string `yaml:"drivename"`
+	Host      string `yaml:"host"`
+	Port      string    `yaml:"port"`
+	User      string `yaml:"user"`
+	Password  string `yaml:"password"`
+	DbName    string `yaml:"dbname"`
 }
 
 type Redis struct {

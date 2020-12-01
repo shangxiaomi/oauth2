@@ -11,7 +11,7 @@ var cfg App
 func Setup() {
 	file, err := ioutil.ReadFile("app.yaml")
 	if err != nil {
-		log.Fatal("error: %v", err)
+		log.Fatalf("error: %v", err)
 	}
 	err = yaml.Unmarshal(file, &cfg)
 	if err != nil {

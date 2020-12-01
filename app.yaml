@@ -3,17 +3,17 @@ session:
   secret_key: abc123
 db:
   default:
-    type: mysql
-    host: string
+    drivename: mysql
+    host: 127.0.0.1
     port: 3306
-    user: 123
-    password: abc
-    dbname: oauth2
+    user: root
+    password: 131400
+    dbname: shpuser
 redis:
   default:
     addr:
     password:
-    db: 0
+    db: 12
 oauth2:
   client:
     - id: test_client_1

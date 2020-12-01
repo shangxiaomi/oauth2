@@ -1,6 +1,8 @@
 package config
 
-import "strings"
+import (
+	"strings"
+)
 
 func Get() *App {
 	return &cfg
@@ -20,14 +22,16 @@ func ScopeJoin(scope []Scope) string {
 	for _, sc := range scope {
 		s = append(s, sc.ID)
 	}
-	return strings.Join(s,",")
+	return strings.Join(s, ",")
 }
 
 func ScopeFilter(clientID string, scope string) (s []Scope) {
 	cli := GetClient(clientID)
 	sl := strings.Split(scope, ",")
+
 	for _, str := range sl {
 		for _, sc := range cli.Scope {
+			//fmt.Println(str,"---------",sc)
 			if str == sc.ID {
 				s = append(s, sc)
 			}
