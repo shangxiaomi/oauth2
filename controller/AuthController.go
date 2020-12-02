@@ -35,6 +35,9 @@ func init() {
 
 // 授权处理,获取授权code
 func AuthorizeHandler(w http.ResponseWriter, r *http.Request) {
+	if CORS(w,r) {
+		return
+	}
 	var form url.Values
 	if v, _ := session.Get(r, "RequestForm"); v != nil {
 		r.ParseForm()
@@ -64,6 +67,9 @@ type TplData struct {
 }
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
+	if CORS(w,r) {
+		return
+	}
 	if r.Method != "POST" {
 		mylog.Error.Println("不支持的方法" + r.Method)
 		http.Error(w, "不支持的方法", 405)
@@ -92,6 +98,10 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 // 登录
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
+	if CORS(w,r) {
+		return
+	}
+
 	form, err := session.Get(r, "RequestForm")
 	if err != nil {
 		mylog.Error.Println("获取session失败" + err.Error())
@@ -138,6 +148,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if userId == "" {
+
 				t, err := template.ParseFiles("tpl/index.html")
 				if err != nil {
 					mylog.Warn.Println("html模板渲染错误")
@@ -268,4 +279,17 @@ func passwordAuthorizationHandler(email string, password string) (string, error)
 	}
 	return userId, nil
 	//return fmt.Sprintf("%s%s", email, "hello"), nil
+}
+
+func CORS(w http.ResponseWriter, r *http.Request) bool {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Max-Age", "86400")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(200)
+		return true
+	}
+	return false
 }
