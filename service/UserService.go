@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"net/http"
+	"oauth2/common"
 	mylog "oauth2/log"
 
 	"golang.org/x/crypto/bcrypt"
@@ -39,6 +40,7 @@ func (u UserService) CreateUser(email string, password string, name string) (use
 		Email:    email,
 		Password: hashPassword,
 		Active:   0,
+		ID:       common.GetUUId(),
 	}
 	// 将用户插入到数据库中
 	user, err = u.repo.SelectByEmail(email)

@@ -9,9 +9,9 @@ import (
 type IUserRepo interface {
 	Create(user model.User) (*model.User, error)
 	Update(User model.User, updateParams map[string]interface{}) (*model.User, error)
-	SelectById(id int) (*model.User, error)
+	SelectById(id int64) (*model.User, error)
 	SelectByEmail(email string) (*model.User, error)
-	DeleteById(id int) error
+	DeleteById(id int64) error
 }
 
 type UserRepo struct {
@@ -43,8 +43,9 @@ func (u UserRepo) Update(user model.User, updateParams map[string]interface{}) (
 	return &user, nil
 }
 
-func (u UserRepo) SelectById(id int) (*model.User, error) {
+func (u UserRepo) SelectById(id int64) (*model.User, error) {
 	var user model.User
+	user.ID = id
 	tx := u.DB.Select(&user)
 	if tx.Error != nil {
 		return nil, tx.Error
@@ -52,7 +53,7 @@ func (u UserRepo) SelectById(id int) (*model.User, error) {
 	return &user, nil
 }
 
-func (u UserRepo) DeleteById(id int) error {
+func (u UserRepo) DeleteById(id int64) error {
 	panic("implement me")
 }
 
