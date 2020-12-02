@@ -14,12 +14,14 @@ type App struct {
 	OAuth2 struct {
 		Client []Client `yaml:"client"`
 	} `yaml:"oauth2"`
+
+	Server Server `yaml:"server"`
 }
 
 type Db struct {
 	DriveName string `yaml:"drivename"`
 	Host      string `yaml:"host"`
-	Port      string    `yaml:"port"`
+	Port      string `yaml:"port"`
 	User      string `yaml:"user"`
 	Password  string `yaml:"password"`
 	DbName    string `yaml:"dbname"`
@@ -42,4 +44,8 @@ type Client struct {
 type Scope struct {
 	ID    string `yaml:"id"`
 	Title string `yaml:"title"`
+}
+
+type Server struct {
+	Port int `ymal:"port"`
 }

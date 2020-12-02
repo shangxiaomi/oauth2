@@ -1,19 +1,21 @@
+server:
+  port:
 session:
   name: session_id
-  secret_key: demo
+  secret_key:
 db:
   default:
     drivename: mysql
     host: 127.0.0.1
     port: 3306
-    user: demo
-    password: demo
-    dbname: demo
+    user:
+    password:
+    dbname:
 redis:
   default:
     addr:
     password:
-    db:
+    db: 12
 oauth2:
   client:
     - id: test_client_1
