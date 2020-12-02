@@ -1,2 +1,0 @@
-[INFO] 2020/12/02 08:54:12 AuthController.go:160: 登陆成功724900708@qq.com
-[WARN] 2020/12/02 08:54:22 AuthController.go:103: 登录失败，session会话为空
