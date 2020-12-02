@@ -26,7 +26,7 @@ func InitDB() *gorm.DB {
 			cfg.Db.Default.DbName),
 	})
 	newLogger := logger.New(
-		log.New(mylog.LogFile, "\r\n", log.LstdFlags), // io writer
+		log.New(mylog.GetLogFile(), "\r\n", log.LstdFlags), // io writer
 		logger.Config{
 			SlowThreshold: time.Second, // 慢 SQL 阈值
 			LogLevel:      logger.Info, // Log level
