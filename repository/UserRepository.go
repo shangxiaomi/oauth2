@@ -28,7 +28,6 @@ func (u UserRepo) SelectByEmail(email string) (*model.User, error) {
 }
 
 func (u UserRepo) Create(user model.User) (*model.User, error) {
-
 	create := u.DB.Create(&user)
 	if create.Error != nil {
 		return nil, create.Error

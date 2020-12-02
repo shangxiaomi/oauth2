@@ -4,8 +4,12 @@ import (
 	"fmt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+	"log"
 	"oauth2/config"
+	mylog "oauth2/log"
 	"oauth2/model"
+	"time"
 )
 
 var dB *gorm.DB
@@ -21,8 +25,16 @@ func InitDB() *gorm.DB {
 			cfg.Db.Default.Port,
 			cfg.Db.Default.DbName),
 	})
-
-	db, err := gorm.Open(databaseConfig, &gorm.Config{})
+	newLogger := logger.New(
+		log.New(mylog.LogFile, "\r\n", log.LstdFlags), // io writer
+		logger.Config{
+			SlowThreshold: time.Second, // 慢 SQL 阈值
+			LogLevel:      logger.Info, // Log level
+		},
+	)
+	db, err := gorm.Open(databaseConfig, &gorm.Config{
+		Logger: newLogger,
+	})
 	if err != nil {
 		//log.Println(err)
 		panic(err)
@@ -33,6 +45,7 @@ func InitDB() *gorm.DB {
 		panic("自动创建用户表失败，请进行排查")
 	}
 	dB = db
+	mylog.Info.Println("database init success")
 	return dB
 }
 

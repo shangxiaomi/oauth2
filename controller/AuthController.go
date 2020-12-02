@@ -3,19 +3,16 @@ package controller
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
 	"gopkg.in/oauth2.v3/errors"
-	"gopkg.in/oauth2.v3/generates"
 	"gopkg.in/oauth2.v3/manage"
-	"gopkg.in/oauth2.v3/models"
 	"gopkg.in/oauth2.v3/server"
-	"gopkg.in/oauth2.v3/store"
 	"html/template"
 	"log"
 	"net/http"
 	"net/url"
 	"oauth2/common"
 	"oauth2/config"
+	mylog "oauth2/log"
 	"oauth2/pkg/session"
 	"oauth2/service"
 	"time"
@@ -26,39 +23,14 @@ var manager *manage.Manager
 
 func init() {
 	// 加载配置文件
-	config.Setup()
-	// 进行数据库初始化
-	common.InitDB()
-	// 设置session的相关配置
-	session.Setup()
-	// config oauth2 server
-	manager = manage.NewDefaultManager()
-	// 授权码配置
-	manager.SetAuthorizeCodeTokenCfg(manage.DefaultAuthorizeCodeTokenCfg)
-	// 设置token存储
-	manager.MustTokenStorage(store.NewMemoryTokenStore())
-	// 设置生成token的方法
-	manager.MapAccessGenerate(generates.NewJWTAccessGenerate([]byte("shangxiaomisercert"), jwt.SigningMethodHS512))
-	// 生成客户端存储
-	clientStore := store.NewClientStore()
-	for _, v := range config.Get().OAuth2.Client {
-		clientStore.Set(v.ID, &models.Client{
-			ID:     v.ID,
-			Secret: v.Secret,
-			Domain: v.Domain,
-		})
-	}
-	manager.MapClientStorage(clientStore)
-	srv = server.NewServer(server.NewConfig(), manager)
-
+	srv = common.GetServer()
+	manager = common.GetManager()
 	// 用来获取根据用户名和密码获取用户id
 	srv.SetPasswordAuthorizationHandler(passwordAuthorizationHandler)
 	srv.SetUserAuthorizationHandler(userAuthorizeHandler)
 	srv.SetAuthorizeScopeHandler(authorizeScopeHandler)
 	srv.SetInternalErrorHandler(internalErrorHandler)
 	srv.SetResponseErrorHandler(responseErrorHandler)
-	// 可以添加额外的载荷
-	//srv.SetExtensionFieldsHandler()
 }
 
 // 授权处理,获取授权code
@@ -74,11 +46,12 @@ func AuthorizeHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 一次新的登录，需要将session中旧的"RequestForm"删除掉
 	if err := session.Delete(w, r, "RequestForm"); err != nil {
+		mylog.Error.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	if err := srv.HandleAuthorizeRequest(w, r); err != nil {
-		fmt.Println(err.Error())
+		mylog.Error.Println(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 }
@@ -92,11 +65,13 @@ type TplData struct {
 
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
+		mylog.Error.Println("不支持的方法" + r.Method)
 		http.Error(w, "不支持的方法", 405)
 		return
 	}
 	if r.Form == nil {
 		if err := r.ParseForm(); err != nil {
+			mylog.Error.Println(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -107,6 +82,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	userService := service.NewUserService()
 	_, msg, code, err := userService.CreateUser(email, password, username)
 	if err != nil {
+		mylog.Error.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -118,11 +94,13 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	form, err := session.Get(r, "RequestForm")
 	if err != nil {
+		mylog.Error.Println("获取session失败" + err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	// 因为会从 userAuthorizeHandler 等中跳转过来，过意，一定会存在对应的参数
 	if form == nil {
+		mylog.Warn.Println("登录失败，session会话为空")
 		http.Error(w, "Invalid Request", http.StatusBadRequest)
 		return
 	}
@@ -136,6 +114,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if data.Scope == nil {
+		mylog.Warn.Println("登陆失败" + "Invalid Scope")
 		http.Error(w, "Invalid Scope", http.StatusBadRequest)
 		return
 	}
@@ -143,6 +122,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		if r.Form == nil {
 			if err := r.ParseForm(); err != nil {
+				mylog.Error.Println("登陆失败" + err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -158,29 +138,32 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if userId == "" {
-				t, err := template.ParseFiles("tpl/login.html")
+				t, err := template.ParseFiles("tpl/index.html")
 				if err != nil {
-					log.Println("登陆失败", err)
+					mylog.Warn.Println("html模板渲染错误")
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 				data.Error = "用户名密码错误!"
 				t.Execute(w, data)
+				mylog.Warn.Println("登陆失败用户名或密码错误" + r.Form.Get("email"))
 				return
 			}
 		}
 		if err := session.Set(w, r, "LoggedInUserID", userId); err != nil {
+			mylog.Error.Println("session设置失败:" + err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		fmt.Println("登陆成功 userId", userId)
 		w.Header().Set("Location", "/authorize")
 		w.WriteHeader(http.StatusFound)
+		mylog.Info.Println("登陆成功" + r.Form.Get("email"))
 		return
 	}
 
-	t, err := template.ParseFiles("tpl/login.html")
+	t, err := template.ParseFiles("tpl/index.html")
 	if err != nil {
+		mylog.Error.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -212,6 +195,7 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 func TokenHandler(w http.ResponseWriter, r *http.Request) {
 	err := srv.HandleTokenRequest(w, r)
 	if err != nil {
+		mylog.Error.Println("TokenHandler error:" + err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -263,9 +247,7 @@ func userAuthorizeHandler(w http.ResponseWriter, r *http.Request) (userID string
 	// 获取会话的UserId
 	v, _ := session.Get(r, "LoggedInUserID")
 	// 会话不存在
-
 	if v == nil {
-		fmt.Println("userAuthorizeHandler:会话不存在")
 		if r.Form == nil {
 			r.ParseForm()
 		}

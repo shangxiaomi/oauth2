@@ -2,8 +2,8 @@ package service
 
 import (
 	"fmt"
-	"log"
 	"net/http"
+	mylog "oauth2/log"
 
 	"golang.org/x/crypto/bcrypt"
 	"oauth2/model"
@@ -30,7 +30,7 @@ func (u UserService) CreateUser(email string, password string, name string) (use
 	// 生成加密的密码
 	hashPassword, err := getPassword(password)
 	if err != nil {
-		log.Println(fmt.Sprintf("密码加密时出错 %v", err))
+		mylog.Error.Println(fmt.Sprintf("密码加密时出错 %v", err))
 		return nil, "内部系统错误", http.StatusInternalServerError, err
 	}
 	// 创建新的用户对象
@@ -42,18 +42,14 @@ func (u UserService) CreateUser(email string, password string, name string) (use
 	}
 	// 将用户插入到数据库中
 	user, err = u.repo.SelectByEmail(email)
-	//if err != nil {
-	//	log.Println(fmt.Sprintf("查询数据时出错: %v", err))
-	//	return nil, "内部系统错误", http.StatusInternalServerError, err
-	//}
-	// 用户已经存在
+
 	if user.ID != 0 {
 		return nil, "此email已经被注册", http.StatusUnprocessableEntity, nil
 	}
 
 	user, err = u.repo.Create(newUser)
 	if err != nil {
-		log.Println(fmt.Sprintf("数据创建时出错: %v", err))
+		mylog.Error.Println(fmt.Sprintf("数据创建时出错: %v", err))
 		return nil, "内部系统错误", http.StatusInternalServerError, err
 	}
 
@@ -63,7 +59,7 @@ func (u UserService) CreateUser(email string, password string, name string) (use
 func (u UserService) ValidatePassword(email string, password string) bool {
 	user, err := u.repo.SelectByEmail(email)
 	if err != nil {
-		log.Println(fmt.Sprintf("查询数据时出错 %v", err.Error()))
+		mylog.Warn.Println(fmt.Sprintf("查询数据时出错 %v", err.Error()))
 		return false
 	}
 	return validatePassword(user, password)
@@ -71,14 +67,13 @@ func (u UserService) ValidatePassword(email string, password string) bool {
 
 func (u UserService) GetUserIdByPwd(email string, password string) (string, error) {
 	// 验证用户数据的正确性
-	fmt.Println(email, password)
 	flag := u.ValidatePassword(email, password)
 	if flag == false {
 		return "", nil
 	}
 	user, err := u.repo.SelectByEmail(email)
 	if user == nil {
-		log.Println("根据email查询到的user为空")
+		mylog.Info.Println("根据email查询到的user为空")
 		// TODO 一个保底逻辑，看是不是抛出异常
 		return "", nil
 	}

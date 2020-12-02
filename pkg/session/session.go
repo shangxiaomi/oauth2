@@ -2,11 +2,11 @@ package session
 
 import (
 	"encoding/gob"
-	"fmt"
 	"github.com/gorilla/sessions"
 	"net/http"
 	"net/url"
 	"oauth2/config"
+	mylog "oauth2/log"
 )
 
 var store *sessions.CookieStore
@@ -20,10 +20,10 @@ func Setup() {
 		MaxAge:   60 * 20,
 		HttpOnly: true,
 	}
+	mylog.Info.Println("session init success")
 }
 
 func Get(r *http.Request, name string) (val interface{}, err error) {
-	fmt.Println("GET" ,r)
 	session, err := store.Get(r, config.Get().Session.Name)
 	if err != nil {
 		return
@@ -33,7 +33,6 @@ func Get(r *http.Request, name string) (val interface{}, err error) {
 }
 
 func Set(w http.ResponseWriter, r *http.Request, name string, val interface{}) (err error) {
-	fmt.Println("Set" ,r)
 	// Get a session.
 	session, err := store.Get(r, config.Get().Session.Name)
 	if err != nil {
