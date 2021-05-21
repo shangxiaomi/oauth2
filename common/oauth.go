@@ -1,15 +1,16 @@
 package common
 
 import (
+	"oauth2/config"
+	mylog "oauth2/log"
+	"oauth2/pkg/session"
+
 	"github.com/dgrijalva/jwt-go"
 	"gopkg.in/oauth2.v3/generates"
 	"gopkg.in/oauth2.v3/manage"
 	"gopkg.in/oauth2.v3/models"
 	"gopkg.in/oauth2.v3/server"
 	"gopkg.in/oauth2.v3/store"
-	"oauth2/config"
-	mylog "oauth2/log"
-	"oauth2/pkg/session"
 )
 
 var srv *server.Server
@@ -35,6 +36,7 @@ func init() {
 	clientStore := store.NewClientStore()
 	for _, v := range config.Get().OAuth2.Client {
 		clientStore.Set(v.ID, &models.Client{
+			// 设置客户端的id
 			ID:     v.ID,
 			Secret: v.Secret,
 			Domain: v.Domain,
@@ -53,4 +55,3 @@ func GetServer() *server.Server {
 func GetManager() *manage.Manager {
 	return manager
 }
-

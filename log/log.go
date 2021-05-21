@@ -1,6 +1,7 @@
 package mylog
 
 import (
+	"io"
 	"log"
 	"os"
 )
@@ -26,11 +27,11 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	Debug.SetOutput(LogFile) // 将文件设置为log输出的文件
-	Info.SetOutput(LogFile)  // 将文件设置为log输出的文件
-	Error.SetOutput(LogFile) // 将文件设置为log输出的文件
-	Warn.SetOutput(LogFile)  // 将文件设置为log输出的文件
-	log.SetOutput(LogFile)   // 将文件设置为log输出的文件
+	Debug.SetOutput(io.MultiWriter(LogFile, os.Stdout)) // 将文件设置为log输出的文件
+	Info.SetOutput(io.MultiWriter(LogFile, os.Stdout))  // 将文件设置为log输出的文件
+	Error.SetOutput(io.MultiWriter(LogFile, os.Stdout)) // 将文件设置为log输出的文件
+	Warn.SetOutput(io.MultiWriter(LogFile, os.Stdout))  // 将文件设置为log输出的文件
+	log.SetOutput(io.MultiWriter(LogFile, os.Stdout))   // 将文件设置为log输出的文件
 }
 
 func GetLogFile() *os.File {

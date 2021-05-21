@@ -28,6 +28,7 @@ func authorizeScopeHandler(w http.ResponseWriter, r *http.Request) (scope string
 	scope = config.ScopeJoin(s)
 	return
 }
+
 func userAuthorizeHandler(w http.ResponseWriter, r *http.Request) (userID string, err error) {
 	// 获取会话的UserId
 	v, _ := session.Get(r, "LoggedInUserID")

@@ -56,8 +56,25 @@ func (this AuthController) GetRegisterHandler(ctx *gin.Context) {
 	panic("未实现的方法")
 }
 
+/*
+1. 没有登录态，访问authorize路径
+
+   - 获取session中的RequestForm的参数失败
+   - 删除session中RequestForm参数
+   - HandleAuthorizeRequest 获取LoggedInUserID失败，判断没有登录，将req.Form设置到session中的RequestForm
+   - 装跳到login
+2. login get请求，返回登录页面
+3. login post请求
+   - 如果登录成功，设置登录态，设置 LoggedInUser
+   - 转跳到authorize路径
+4. 登录态，访问authorize路径
+   - 由于跳转，导致没有url参数，所以从session的RequestForm中获取请求参数
+   - 删除session中的RequestForm
+   - HandleAuthorizeRequest 获取LoggedInUserID成功，指定相应的token生成逻辑
+*/
 func (this AuthController) AuthorizeHandler(ctx *gin.Context) {
 	var form url.Values
+	// RequestFrom为了获取token生成参数，因为中间登录的重定向过程，导致这些url参数丢失，所以要用session保存。
 	if v, _ := session.Get(ctx.Request, "RequestForm"); v != nil {
 		err := ctx.Request.ParseForm()
 		if err != nil {
@@ -65,13 +82,15 @@ func (this AuthController) AuthorizeHandler(ctx *gin.Context) {
 			http.Error(ctx.Writer, err.Error(), http.StatusUnprocessableEntity)
 			return
 		}
+		// 如果没有client_id就将新的请求复制给
 		if ctx.Request.Form.Get("client_id") == "" {
 			form = v.(url.Values)
 		}
 	}
+	// 将session的中的数据赋值到req中
 	ctx.Request.Form = form
 
-	// 一次新的登录，需要将session中旧的"RequestForm"删除掉
+	// 需要将session中旧的"RequestForm"删除掉
 	if err := session.Delete(ctx.Writer, ctx.Request, "RequestForm"); err != nil {
 		mylog.Error.Println(err)
 		http.Error(ctx.Writer, err.Error(), http.StatusInternalServerError)
@@ -115,6 +134,7 @@ func (this AuthController) LoginHandler(ctx *gin.Context) {
 		return
 	}
 
+	// 是登录请求
 	if ctx.Request.Method == "POST" {
 		if ctx.Request.Form == nil {
 			if err := ctx.Request.ParseForm(); err != nil {
